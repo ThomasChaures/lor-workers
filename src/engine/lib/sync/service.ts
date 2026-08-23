@@ -265,20 +265,23 @@ export async function syncMatches(supabase: SupabaseClient): Promise<SyncProgres
       );
       const matchIds = [...new Set(matchIdArrays.flat())];
 
-      // 2. Filter out matches where THIS PLAYER already has a participant record
-      // First: which of these riot_match_ids exist in the matches table?
+      // 2. Filter out matches this player is already done with — either they have
+      // a participant record, OR the match was already evaluated and flagged
+      // is_skipped (remake / early surrender). Skipped matches never store a
+      // participation, so without the is_skipped check they'd be re-fetched from
+      // Riot every run and burn rate-limit budget forever.
       const { data: existingMatches } = await supabase
         .from("matches")
-        .select("id, riot_match_id")
+        .select("id, riot_match_id, is_skipped")
         .in("riot_match_id", matchIds);
 
-      const matchDbMap = new Map<string, string>();
+      const matchDbMap = new Map<string, { id: string; isSkipped: boolean }>();
       for (const m of existingMatches ?? []) {
-        matchDbMap.set(m.riot_match_id, m.id);
+        matchDbMap.set(m.riot_match_id, { id: m.id, isSkipped: !!m.is_skipped });
       }
 
-      // Second: of those, which ones does this player already have participation for?
-      const existingDbIds = [...matchDbMap.values()];
+      // Of the matches in the DB, which does this player already have participation for?
+      const existingDbIds = [...matchDbMap.values()].map((v) => v.id);
       const { data: existingParticipations } = existingDbIds.length > 0
         ? await supabase
             .from("match_participants")
@@ -291,10 +294,11 @@ export async function syncMatches(supabase: SupabaseClient): Promise<SyncProgres
         (existingParticipations ?? []).map((p) => p.match_id)
       );
 
-      // Need processing if: not in DB at all, OR in DB but player has no participation
+      // Done with a match if the player already has participation OR it's flagged
+      // skipped. Everything else (not in DB, or in DB without participation) is new.
       const alreadyProcessedRiotIds = new Set<string>();
-      for (const [riotId, dbId] of matchDbMap) {
-        if (participatedDbIds.has(dbId)) {
+      for (const [riotId, meta] of matchDbMap) {
+        if (participatedDbIds.has(meta.id) || meta.isSkipped) {
           alreadyProcessedRiotIds.add(riotId);
         }
       }
@@ -310,11 +314,24 @@ export async function syncMatches(supabase: SupabaseClient): Promise<SyncProgres
 
           // Skip remakes (games under 5 minutes) AND early surrenders by AFK.
           // Riot mitigates LP loss on early surrenders, so the league must not
-          // penalize them either — skip the whole match for everyone.
+          // penalize them either — skip the whole match for everyone. Persist a
+          // flagged row so the dedup above recognises it next run instead of
+          // re-fetching it from Riot forever (a remake/surrender is skipped for
+          // every player, so this global flag is correct).
           const isEarlySurrender = matchData.participants.some(
             (p) => p.gameEndedInEarlySurrender
           );
           if (matchData.gameDuration < 300 || isEarlySurrender) {
+            await supabase.from("matches").upsert(
+              {
+                riot_match_id: matchData.matchId,
+                queue_id: matchData.queueId,
+                game_duration: matchData.gameDuration,
+                game_end_at: matchEndAt.toISOString(),
+                is_skipped: true,
+              },
+              { onConflict: "riot_match_id" }
+            );
             progress.matchesSkipped++;
             continue;
           }
