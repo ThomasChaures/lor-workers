@@ -1,30 +1,33 @@
 import { createLogger } from "../lib/logger.js";
 import { createAdminClient } from "../config/supabase.js";
+import { claimSyncSlot, runSyncAndStamp } from "@/lib/sync/run";
 
 const log = createLogger("sync-matches");
 
-// One sync tick. Right now this is a WIRED STUB: it proves the loop, PM2 and the
-// Supabase connection work end-to-end before we bring the engine over.
-//
-// TODO(engine): the real work lives in the Next repo under src/lib/sync
-// (service.ts, run.ts, constants.ts), src/lib/riot/*, src/lib/scoring/* and
-// src/types/*. Once that code is vendored into this repo (see README → "Sharing
-// the engine"), replace the body below with:
-//   const claim = await claimSyncSlot(admin);
-//   if (claim.ok) await runSyncAndStamp(admin);
+// One sync tick — the real engine now. `claimSyncSlot` is the shared lock/cooldown
+// (sync_state row id='global'): it rejects if a run is still in flight or the
+// cooldown hasn't elapsed, so overlapping ticks (or a pass that outlives the loop
+// interval) can't double-run. `runSyncAndStamp` runs syncMatches and ALWAYS stamps
+// completion, even on failure, so the state never sticks as "running".
 export async function syncTick(): Promise<void> {
   const admin = createAdminClient();
 
-  const { data: state, error } = await admin
-    .from("sync_state")
-    .select("last_sync_at, last_completed_at, sync_requested_at")
-    .eq("id", "global")
-    .single();
-
-  if (error) {
-    log.warn("could not read sync_state — is the migration applied?", error.message);
+  const claim = await claimSyncSlot(admin);
+  if (!claim.ok) {
+    log.info(`skipped — slot busy or cooling down (retry in ${claim.retryAfter}s)`);
     return;
   }
 
-  log.info("tick ok — sync_state reachable", state);
+  log.info("sync starting");
+  const progress = await runSyncAndStamp(admin);
+  if (!progress) {
+    log.warn("sync run failed — see engine logs above");
+    return;
+  }
+
+  log.info(
+    `sync done: ${progress.membersProcessed}/${progress.membersTotal} players, ` +
+      `${progress.matchesFetched} new matches, ${progress.pointsCalculated} points, ` +
+      `${progress.matchesOutOfRange} out of range, ${progress.errors.length} errors`
+  );
 }
