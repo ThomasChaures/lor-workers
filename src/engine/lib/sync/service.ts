@@ -68,6 +68,12 @@ function getQueueForLeagueType(type: string): number {
 // history. Players in a league use their earliest league start instead.
 const TRACK_LOOKBACK_DAYS = 14;
 
+// Per-player cooldown: a player synced within this window is skipped this pass,
+// so the worker never re-hits Riot for the same player too often — it spreads
+// load across the whole tracked-player set. Read from env (engine convention),
+// default 3 min. `riot_last_synced_at` is stamped at the end of each player's sync.
+const PLAYER_SYNC_COOLDOWN_MS = Number(process.env.PLAYER_SYNC_COOLDOWN_MS) || 3 * 60 * 1000;
+
 interface PlayerToTrack {
   profileId: string;
   riotPuuid: string;
@@ -151,10 +157,14 @@ async function getActiveLeaguesByProfile(
 // worker model: keep ALL players' match history fresh; scoring only happens for
 // those in an active league.
 async function getPlayersToTrack(supabase: SupabaseClient): Promise<PlayerToTrack[]> {
+  // Per-player cooldown: only players never synced (null) or last synced before
+  // the cutoff are due this pass. This is what paces the worker per-player.
+  const cooldownCutoff = new Date(Date.now() - PLAYER_SYNC_COOLDOWN_MS).toISOString();
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select("id, riot_puuid, riot_game_name, riot_platform")
-    .not("riot_puuid", "is", null);
+    .not("riot_puuid", "is", null)
+    .or(`riot_last_synced_at.is.null,riot_last_synced_at.lt.${cooldownCutoff}`);
 
   if (error || !profiles) {
     console.error("Error fetching profiles to track:", error);

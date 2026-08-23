@@ -34,6 +34,6 @@ export const env = {
   // Fallback only — the sync path always passes each player's own platform, so a
   // missing RIOT_PLATFORM must not crash boot. BR=br1, LAN=la1, LAS=la2.
   riotPlatform: optional("RIOT_PLATFORM", "la2"),
-  syncIntervalMs: optionalInt("SYNC_INTERVAL_MS", 120_000, 30_000),
+  syncIntervalMs: optionalInt("SYNC_INTERVAL_MS", 60_000, 30_000),
   syncStaleMs: optionalInt("SYNC_STALE_MS", 360_000, 60_000),
 };
