@@ -14,7 +14,9 @@ module.exports = {
       script: "src/workers/sync.ts",
       interpreter: "node",
       interpreter_args: "--import tsx",
-      instances: 1,
+      exec_mode: "fork", // fork, NOT cluster — cluster can't run a .ts entry via
+                         // `node --import tsx`, and a clustered sync loop would
+                         // duplicate the worker. One fork process is exactly right.
       autorestart: true,
       max_restarts: 20,
       restart_delay: 5000,
@@ -27,7 +29,9 @@ module.exports = {
       script: "src/workers/emails.ts",
       interpreter: "node",
       interpreter_args: "--import tsx",
-      instances: 1,
+      exec_mode: "fork", // fork, NOT cluster — cluster can't run a .ts entry via
+                         // `node --import tsx`, and a clustered sync loop would
+                         // duplicate the worker. One fork process is exactly right.
       autorestart: true,
       max_restarts: 20,
       restart_delay: 5000,
