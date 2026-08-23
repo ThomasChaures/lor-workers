@@ -1,0 +1,60 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual re-deploys from the Actions tab
+
+# Never let two deploys run at once (a reload mid-reload leaves PM2 confused).
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          # Secrets are forwarded to the remote shell via `envs` below — NOT
+          # interpolated into the script string, so they never appear in logs.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,RIOT_API_KEY
+          script: |
+            set -euo pipefail  # NOTE: never add -x here, it would leak secrets
+
+            # nvm-installed node/pm2 are NOT on PATH in a non-interactive SSH
+            # shell — this line is the #1 thing people forget. Source nvm first.
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            APP_DIR="$HOME/lor-u"
+            cd "$APP_DIR"
+
+            # The VPS clone is a PURE deploy target: it must always mirror
+            # origin/main exactly and never carry local commits. Hard reset makes
+            # deploys deterministic and immune to "pull failed: local changes".
+            git fetch --prune origin
+            git reset --hard origin/main
+
+            # Regenerate .env from GitHub Secrets on every deploy — single source
+            # of truth. Heredoc doesn't echo, and chmod 600 locks it down. Tuning
+            # vars (SYNC_INTERVAL_MS/SYNC_STALE_MS) are omitted on purpose: env.ts
+            # already has sane defaults, so only real secrets live here.
+            cat > .env <<EOF
+            SUPABASE_URL=${SUPABASE_URL}
+            SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+            RIOT_API_KEY=${RIOT_API_KEY}
+            EOF
+            chmod 600 .env
+
+            npm ci
+            pm2 startOrReload ecosystem.config.cjs --update-env
+            pm2 save

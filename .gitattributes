@@ -1,0 +1,3 @@
+# This repo is deployed to Linux. Normalize everything to LF so shell/config
+# files never break on a Windows-authored CRLF.
+* text=auto eol=lf
