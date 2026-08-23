@@ -18,6 +18,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 20,
       restart_delay: 5000,
+      kill_timeout: 30000, // give a tick 30s to stop cleanly before SIGKILL
       max_memory_restart: "512M",
       env: { NODE_ENV: "production" },
     },
@@ -30,6 +31,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 20,
       restart_delay: 5000,
+      kill_timeout: 30000, // give a tick 30s to stop cleanly before SIGKILL
       max_memory_restart: "256M",
       env: { NODE_ENV: "production" },
     },

@@ -44,14 +44,19 @@ jobs:
             git fetch --prune origin
             git reset --hard origin/main
 
-            # Regenerate .env from GitHub Secrets on every deploy — single source
-            # of truth. Heredoc doesn't echo, and chmod 600 locks it down. Tuning
-            # vars (SYNC_INTERVAL_MS/SYNC_STALE_MS) are omitted on purpose: env.ts
-            # already has sane defaults, so only real secrets live here.
+            # Regenerate .env on every deploy — single source of truth. Secrets
+            # come from the forwarded env vars (heredoc doesn't echo, chmod 600
+            # locks it down). RIOT_REGION_ROUTING/RIOT_PLATFORM are config, NOT
+            # secrets: BR, LAN and LAS all route to "americas" for match-v5, and
+            # the per-player platform is stored on each profile — this la2 is only
+            # a fallback the sync path never actually uses. Tuning vars
+            # (SYNC_INTERVAL_MS/SYNC_STALE_MS) are omitted; env.ts has defaults.
             cat > .env <<EOF
             SUPABASE_URL=${SUPABASE_URL}
             SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
             RIOT_API_KEY=${RIOT_API_KEY}
+            RIOT_REGION_ROUTING=americas
+            RIOT_PLATFORM=la2
             EOF
             chmod 600 .env
 
