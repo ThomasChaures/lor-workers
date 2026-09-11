@@ -22,11 +22,13 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,RIOT_API_KEY
+          envs: SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY,RIOT_API_KEY,TWITCH_CLIENT_ID,TWITCH_CLIENT_SECRET
           script: |
             set -euo pipefail  # NOTE: never add -x here, it would leak secrets
 
@@ -50,13 +52,17 @@ jobs:
             # secrets: BR, LAN and LAS all route to "americas" for match-v5, and
             # the per-player platform is stored on each profile — this la2 is only
             # a fallback the sync path never actually uses. Tuning vars
-            # (SYNC_INTERVAL_MS/SYNC_STALE_MS) are omitted; env.ts has defaults.
+            # (SYNC_INTERVAL_MS/SYNC_STALE_MS/LIVE_INTERVAL_MS) are omitted; env.ts
+            # has defaults. TWITCH_* power the lor-live worker; without them that
+            # process fail-fasts at boot (the others are unaffected).
             cat > .env <<EOF
             SUPABASE_URL=${SUPABASE_URL}
             SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
             RIOT_API_KEY=${RIOT_API_KEY}
             RIOT_REGION_ROUTING=americas
             RIOT_PLATFORM=la2
+            TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID}
+            TWITCH_CLIENT_SECRET=${TWITCH_CLIENT_SECRET}
             EOF
             chmod 600 .env
 
