@@ -6,8 +6,10 @@
   "description": "LeagueOfRankeds worker host — background jobs (match sync, email crons) running on the VPS.",
   "scripts": {
     "dev:sync": "tsx watch src/workers/sync.ts",
+    "dev:live": "tsx watch src/workers/live.ts",
     "start:sync": "tsx src/workers/sync.ts",
     "start:emails": "tsx src/workers/emails.ts",
+    "start:live": "tsx src/workers/live.ts",
     "typecheck": "tsc --noEmit",
     "pm2:start": "pm2 start ecosystem.config.cjs",
     "pm2:reload": "pm2 reload ecosystem.config.cjs",

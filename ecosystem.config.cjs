@@ -39,5 +39,18 @@ module.exports = {
       max_memory_restart: "256M",
       env: { NODE_ENV: "production" },
     },
+    {
+      name: "lor-live",
+      script: "src/workers/live.ts",
+      interpreter: "node",
+      interpreter_args: "--import tsx",
+      exec_mode: "fork", // fork, NOT cluster — one poll loop, same as the others.
+      autorestart: true,
+      max_restarts: 20,
+      restart_delay: 5000,
+      kill_timeout: 30000, // give a tick 30s to stop cleanly before SIGKILL
+      max_memory_restart: "256M",
+      env: { NODE_ENV: "production" },
+    },
   ],
 };

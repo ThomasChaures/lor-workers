@@ -36,4 +36,10 @@ export const env = {
   riotPlatform: optional("RIOT_PLATFORM", "la2"),
   syncIntervalMs: optionalInt("SYNC_INTERVAL_MS", 60_000, 30_000),
   syncStaleMs: optionalInt("SYNC_STALE_MS", 360_000, 60_000),
+  // Live-status worker (lor-live). Twitch creds are OPTIONAL here so the sync
+  // worker still boots without them; the lor-live entrypoint fails fast if they
+  // are missing. Kick needs no credentials (unofficial endpoint).
+  liveIntervalMs: optionalInt("LIVE_INTERVAL_MS", 60_000, 30_000),
+  twitchClientId: optional("TWITCH_CLIENT_ID", ""),
+  twitchClientSecret: optional("TWITCH_CLIENT_SECRET", ""),
 };

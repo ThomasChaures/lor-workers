@@ -11,6 +11,7 @@ shared Supabase database**.
 | ------------ | ------------------------ | ----------------------------------------------- |
 | `lor-sync`   | `src/workers/sync.ts`    | Continuous Riot match sync (no 300s ceiling).   |
 | `lor-emails` | `src/workers/emails.ts`  | Email cron jobs (placeholder for now).          |
+| `lor-live`   | `src/workers/live.ts`    | Twitch/Kick live-status polling → `profiles`.   |
 
 Add new workers as new files under `src/workers/` + a new entry in
 `ecosystem.config.cjs`.
@@ -44,6 +45,12 @@ push to `main` SSHes into the VPS, hard-resets to `origin/main`, regenerates
 Required GitHub Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (SSH connection) +
 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RIOT_API_KEY` (written to `.env` on
 each deploy — single source of truth, never committed).
+
+For `lor-live` also set `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` (register a
+Twitch app at dev.twitch.tv → client-credentials). Optional: `LIVE_INTERVAL_MS`
+(default 60000). Kick needs no credentials — it uses the unofficial public
+endpoint. Without the Twitch secrets the `lor-live` process fails fast at boot
+(the other workers are unaffected).
 
 One-time VPS setup (git/node/pm2 installed, deploy key authorized on GitHub):
 
