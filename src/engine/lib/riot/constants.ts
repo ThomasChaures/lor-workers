@@ -75,9 +75,16 @@ export function itemIconUrl(id: number | string): string {
   return `${DDRAGON_CDN}/item/${id}.png`;
 }
 
+// Profile icons come from CommunityDragon, not Data Dragon: it's versionless
+// (`/latest/`) and hosts EVERY icon — including new/event/Prestige ones that
+// Data Dragon 404s on. Keeping the stored avatar_url free of a patch version
+// means it never goes stale, so we no longer need a per-patch backfill.
+const PROFILE_ICON_CDN =
+  "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons";
+
 /** Summoner profile icon by numeric profile icon id. */
 export function profileIconUrl(id: number | string): string {
-  return `${DDRAGON_CDN}/profileicon/${id}.png`;
+  return `${PROFILE_ICON_CDN}/${id}.jpg`;
 }
 
 export const TIER_VALUES: Record<string, number> = {
