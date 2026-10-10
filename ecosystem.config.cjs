@@ -52,5 +52,18 @@ module.exports = {
       max_memory_restart: "256M",
       env: { NODE_ENV: "production" },
     },
+    {
+      name: "lor-inhouse",
+      script: "src/workers/inhouse.ts",
+      interpreter: "node",
+      interpreter_args: "--import tsx",
+      exec_mode: "fork", // fork, NOT cluster — one heartbeat loop, same as the others.
+      autorestart: true,
+      max_restarts: 20,
+      restart_delay: 5000,
+      kill_timeout: 30000, // give a tick 30s to stop cleanly before SIGKILL
+      max_memory_restart: "128M", // only POSTs two endpoints; needs almost nothing
+      env: { NODE_ENV: "production" },
+    },
   ],
 };
