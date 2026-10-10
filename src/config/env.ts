@@ -42,4 +42,11 @@ export const env = {
   liveIntervalMs: optionalInt("LIVE_INTERVAL_MS", 60_000, 30_000),
   twitchClientId: optional("TWITCH_CLIENT_ID", ""),
   twitchClientSecret: optional("TWITCH_CLIENT_SECRET", ""),
+  // Inhouse cron worker (lor-inhouse). Triggers the Next app's matchmaker +
+  // ready-check-expiry endpoints on a schedule (the logic lives in the app; this
+  // worker is just the heartbeat). OPTIONAL here so the other workers still boot;
+  // the lor-inhouse entrypoint fails fast if the URL/secret are missing.
+  appBaseUrl: optional("APP_BASE_URL", ""),
+  inhouseCronSecret: optional("INHOUSE_CRON_SECRET", ""),
+  inhouseIntervalMs: optionalInt("INHOUSE_INTERVAL_MS", 30_000, 15_000),
 };
